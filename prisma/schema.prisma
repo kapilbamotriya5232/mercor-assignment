@@ -1,0 +1,213 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== BUSINESS MODELS ====================
+
+// The top-level entity for a company using the service.
+model Organization {
+  id        String    @id @default(cuid())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // An organization has multiple employees and projects.
+  employees Employee[]
+  projects  Project[]
+  apiTokens ApiToken[]
+}
+
+// Represents a user who tracks time. Corresponds to the Employee API.
+model Employee {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?   // Name can be optional until fully onboarded
+  password     String?   // Hashed password, null until account is activated
+  isActive     Boolean   @default(false) // Inactive until account is activated
+  isOnboarded  Boolean   @default(false) // Track if employee completed onboarding
+  role         Role      @default(EMPLOYEE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Authentication tokens
+  activationToken   String?   @unique // Token sent via email for activation
+  activationExpiry  DateTime? // Expiry for activation token
+  resetToken        String?   @unique // Password reset token
+  resetTokenExpiry  DateTime? // Expiry for reset token
+
+  // An employee belongs to exactly one organization.
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  // Many-to-many relationships for project and task assignments.
+  projects Project[]
+  tasks    Task[]
+
+  // An employee can have many time entries and screenshots.
+  timeEntries TimeEntry[]
+  screenshots Screenshot[]
+  
+  // Audit logs for this employee's actions
+  auditLogs AuditLog[]
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+// Role enum for employee permissions
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+// Corresponds to the Project API.
+model Project {
+  id        String    @id @default(cuid())
+  name      String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // A project belongs to one organization.
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  // A project can have many assigned employees.
+  employees Employee[]
+
+  // A project contains multiple tasks. Per the spec, this could be a single "default task".
+  tasks Task[]
+
+  @@index([organizationId])
+}
+
+// Corresponds to the Task API. This is the object time is logged against.
+model Task {
+  id        String    @id @default(cuid())
+  name      String // e.g., "Default Task for Project X"
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // A task must belong to a project.
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+
+  // A task has its own list of assigned employees.
+  employees Employee[]
+
+  // A task can have many time entries logged against it.
+  timeEntries TimeEntry[]
+
+  @@index([projectId])
+}
+
+// Represents a single clock-in/clock-out session. Corresponds to the Time Tracking API.
+model TimeEntry {
+  id                String      @id @default(cuid())
+  startTime         DateTime    // When the user clocked in.
+  endTime           DateTime?   // When the user clocked out. Null if the timer is currently running.
+  durationInSeconds Int         @default(0) // Can be calculated and stored upon clock-out.
+  breakDuration     Int         @default(0) // Break time in seconds
+  notes             String?     // Optional notes for the time entry
+  createdAt         DateTime    @default(now())
+
+  // The time entry is logged by one employee against one task.
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id])
+
+  // A single time entry can have multiple screenshots associated with it.
+  screenshots Screenshot[]
+
+  @@index([employeeId])
+  @@index([taskId])
+  @@index([startTime])
+}
+
+// Represents a captured screenshot. Corresponds to the Screenshots API.
+model Screenshot {
+  id              String   @id @default(cuid())
+  url             String?  // URL pointing to the stored image (null if stored as base64)
+  base64Data      String?  @db.Text // Base64 encoded image data (for development)
+  timestamp       DateTime // The exact time the screenshot was captured.
+  hasPermissions  Boolean  @default(true) // The "permission flag" to indicate if the app could take a proper screenshot.
+  
+  // Metadata
+  appName         String?  // Active application name
+  windowTitle     String?  // Active window title
+  productivity    Int?     // Productivity score (0-100)
+  
+  // System info
+  macAddress      String?
+  ipAddress       String?
+  computerName    String?
+  osVersion       String?
+
+  // The screenshot was taken for a specific employee during a specific time entry.
+  employeeId  String
+  employee    Employee    @relation(fields: [employeeId], references: [id])
+  timeEntryId String
+  timeEntry   TimeEntry   @relation(fields: [timeEntryId], references: [id])
+
+  createdAt   DateTime    @default(now())
+
+  @@index([employeeId])
+  @@index([timeEntryId])
+  @@index([timestamp])
+}
+
+// ==================== AUTHENTICATION MODELS ====================
+
+// API tokens for system-to-system authentication
+model ApiToken {
+  id             String    @id @default(cuid())
+  name           String    // Friendly name for the token
+  token          String    @unique // The actual token (hashed)
+  lastFourChars  String    // Last 4 characters of token for identification
+  permissions    Json      // JSON array of permissions/scopes
+  isActive       Boolean   @default(true)
+  lastUsedAt     DateTime?
+  expiresAt      DateTime? // Optional expiry
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // API token belongs to an organization
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([token])
+  @@index([organizationId])
+}
+
+// Audit log for security and compliance
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // e.g., "LOGIN", "LOGOUT", "CREATE_PROJECT", etc.
+  entityType String?  // e.g., "Employee", "Project", "Task"
+  entityId   String?  // ID of the affected entity
+  metadata   Json?    // Additional data about the action
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  // Who performed the action
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
+  @@index([action])
+  @@index([createdAt])
+}

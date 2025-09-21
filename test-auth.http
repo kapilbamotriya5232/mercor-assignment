@@ -1,0 +1,85 @@
+### Authentication Test File
+### Use with REST Client extension in VS Code or similar tools
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+### 1. Test Login - Employee
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "employee@mercor.com",
+  "password": "Employee@123"
+}
+
+### Save the token from the login response
+### @name loginResponse
+### @jwt = {{loginResponse.response.body.token}}
+
+### 2. Test Login - Admin
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@mercor.com",
+  "password": "Admin@123"
+}
+
+### 3. Test Login - Invalid Credentials
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "employee@mercor.com",
+  "password": "WrongPassword"
+}
+
+### 4. Test Login - Non-existent User
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "nonexistent@mercor.com",
+  "password": "Password123"
+}
+
+### 5. Validate Token (POST method)
+POST {{baseUrl}}/api/auth/validate
+Content-Type: {{contentType}}
+
+{
+  "token": "paste_your_jwt_token_here"
+}
+
+### 6. Validate Token from Header (GET method)
+GET {{baseUrl}}/api/auth/validate
+Authorization: Bearer paste_your_jwt_token_here
+
+### 7. Create API Token (Admin only - needs JWT from admin login)
+POST {{baseUrl}}/api/auth/api-token
+Content-Type: {{contentType}}
+Authorization: Bearer paste_admin_jwt_token_here
+
+{
+  "name": "Test API Token",
+  "permissions": ["employee:read", "time:read", "time:write"],
+  "expiresInDays": 30
+}
+
+### 8. List API Tokens (Admin only)
+GET {{baseUrl}}/api/auth/api-token
+Authorization: Bearer paste_admin_jwt_token_here
+
+### 9. Validate API Token
+GET {{baseUrl}}/api/auth/validate
+X-API-Key: paste_api_token_here
+
+### 10. Test Swagger UI
+### Open in browser: http://localhost:3000/api-docs
+
+### Test Credentials:
+### Admin: admin@mercor.com / Admin@123
+### Manager: manager@mercor.com / Manager@123
+### Employee: employee@mercor.com / Employee@123
+### Pending: pending@mercor.com (needs activation)
