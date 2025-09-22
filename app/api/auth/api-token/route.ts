@@ -147,7 +147,7 @@ export const POST = requireRole('ADMIN', async (req: NextRequest, auth: AuthResu
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.format() },
         { status: 400 }
       );
     }
