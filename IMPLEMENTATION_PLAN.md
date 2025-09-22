@@ -231,35 +231,57 @@ jwt.sign({
 
 ---
 
-#### **Phase 3: Employee API (Hours 6-10)**
+#### **Phase 3: Employee API (Hours 6-10)** ✅ **COMPLETE**
 ```bash
 Timeline: 4 hours
 Priority: CRITICAL
+Status: ✅ IMPLEMENTED WITH FULL INSIGHTFUL COMPATIBILITY
 ```
 
-**Implement Insightful-compatible endpoints:**
-- `POST /api/v1/employee` - Create employee (triggers email invitation)
-- `GET /api/v1/employee/:id` - Get employee details
-- `GET /api/v1/employee` - List all employees
-- `PUT /api/v1/employee/:id` - Update employee
-- `GET /api/v1/employee/deactivate/:id` - Deactivate employee (unusual GET method)
+**Implemented Insightful-compatible endpoints:** ✅ **ALL COMPLETE**
+- ✅ `POST /api/v1/employee` - Create employee (triggers email invitation)
+- ✅ `GET /api/v1/employee/:id` - Get employee details
+- ✅ `GET /api/v1/employee` - List all employees
+- ✅ `PUT /api/v1/employee/:id` - Update employee
+- ✅ `GET /api/v1/employee/deactivate/:id` - Deactivate employee (unusual GET method)
 
-**Critical Implementation Notes:**
-- **Singular endpoint**: `/api/v1/employee` (NOT `/employees`)
-- **Deactivation uses GET**: Unusual but must match Insightful exactly
-- **Required fields**: name, email, teamId, sharedSettingsId
-- **Unix timestamps**: invited, createdAt, deactivated (milliseconds)
-- **Error format**: VALIDATION_ERROR with details array
+**Tasks:** ✅ **ALL COMPLETE**
+1. ✅ Implemented comprehensive Zod validation schemas
+2. ✅ Created employee service layer with CRUD operations
+3. ✅ Built all API route handlers with Insightful format
+4. ✅ Integrated dual-model authentication (AuthUser ↔ Employee)
+5. ✅ Added organization scoping and role-based access
+6. ✅ Comprehensive testing of all endpoints
 
-**Features:**
-- Email invitation system (using Resend API)
-- Account activation flow (separate implementation)
-- System permissions tracking
-- **Complete OpenAPI documentation with:**
-  - Request/response schemas matching Insightful format
-  - Error responses (422, 404, 409)
-  - Exact field names and data types
-  - Unix timestamp handling
+**Key Implementation:** ✅ **100% INSIGHTFUL COMPATIBLE**
+- **Singular endpoint**: `/api/v1/employee` (NOT `/employees`) ✅
+- **Deactivation uses GET**: Unusual but matches Insightful exactly ✅
+- **Required fields**: name, email, teamId, sharedSettingsId ✅
+- **Unix timestamps**: invited, createdAt, deactivated (milliseconds) ✅
+- **Error format**: VALIDATION_ERROR with details array ✅
+- **15-character IDs**: Insightful-compatible ID format ✅
+
+**Testing Results:** ✅ **ALL ENDPOINTS VERIFIED**
+- Employee creation with invitation
+- Employee listing with organization scoping
+- Employee retrieval by ID with validation
+- Employee updates with field validation
+- Employee deactivation with conflict handling
+- Complete error validation testing
+
+**Key Files:** ✅ **ALL IMPLEMENTED**
+- `app/api/v1/employee/route.ts` - Create & List endpoints
+- `app/api/v1/employee/[id]/route.ts` - Get & Update endpoints
+- `app/api/v1/employee/deactivate/[id]/route.ts` - Deactivate endpoint
+- `lib/services/employee.ts` - Business logic layer
+- `lib/validation/employee.ts` - Zod schemas and validation
+- `test-employee-api.http` - Comprehensive API testing
+
+**Swagger Documentation:** ✅ **COMPLETE**
+- All endpoints documented with OpenAPI spec
+- Request/response schemas matching Insightful format
+- Error responses (422, 404, 409) documented
+- Authentication requirements specified
 
 ---
 
@@ -299,17 +321,17 @@ Timeline: 6 hours
 Priority: CRITICAL
 ```
 
-**Analytics Endpoints (Insightful Format):**
-- `GET /api/v1/analytics/window` - Get time tracking windows/entries
+**Insightful-Compatible Public API Endpoints:**
+- `GET /api/v1/analytics/window` - Get time tracking windows/entries (for payroll)
 - `GET /api/v1/analytics/project-time` - Get aggregated project time data
 
-**Additional Endpoints (Need Implementation):**
-- `POST /api/v1/time/start` - Start time tracking session (for desktop app)
-- `POST /api/v1/time/stop` - Stop time tracking session (for desktop app)
-- `GET /api/v1/time/current` - Get current active session (for desktop app)
+**Internal Endpoints for Desktop App (NOT part of Insightful API):**
+- `POST /internal/window/create` - Desktop app creates time entry
+- `PUT /internal/window/update` - Desktop app updates time entry with end time
+- `GET /internal/employee/current` - Desktop app gets current user's projects/tasks
 
 **Critical Implementation Notes:**
-- **Analytics paths**: `/api/v1/analytics/window` for detailed time windows
+- **Analytics paths**: `/api/v1/analytics/window` for reading time data only
 - **Time format**: Unix timestamps in milliseconds throughout
 - **Timezone handling**: `timezoneOffset`, `startTranslated`, `endTranslated`
 - **Rich metadata**: Hardware ID (hwid), OS, computer name, domain
@@ -318,9 +340,9 @@ Priority: CRITICAL
 - **Screenshot correlation**: `deletedScreenshots` count per window
 
 **Key Features:**
-- Timezone handling (store in UTC, multiple timezone fields)
-- Hardware identification via `hwid` field
-- Automatic shift creation and window grouping
+- GET endpoints are READ-ONLY for Mercor to query time data
+- Internal endpoints handle time creation from desktop app
+- Hardware identification via `hwid` field for fraud prevention
 - Comprehensive payroll rate tracking
 - System information collection (OS, computer name, etc.)
 
@@ -332,26 +354,27 @@ Timeline: 4 hours
 Priority: MEDIUM
 ```
 
-**Analytics Endpoints (Insightful Format):**
+**Insightful-Compatible Public API Endpoints:**
 - `GET /api/v1/analytics/screenshot` - List screenshots with basic filtering
 - `GET /api/v1/analytics/screenshot-paginate` - List screenshots with advanced pagination
 - `DELETE /api/v1/analytics/screenshot/:id` - Delete specific screenshot
 
-**Additional Endpoints (Need Implementation):**
-- `POST /api/v1/screenshots` - Upload screenshot (for desktop app)
+**Internal Endpoints for Desktop App (NOT part of Insightful API):**
+- `POST /internal/screenshot/upload` - Desktop app uploads screenshot with metadata
 
 **Critical Implementation Notes:**
-- **Analytics paths**: `/api/v1/analytics/screenshot` for screenshot retrieval
+- **Analytics paths**: `/api/v1/analytics/screenshot` for querying screenshots only
 - **Rich metadata**: App details, file paths, window titles, URLs
-- **Network tracking**: `gateways` array with MAC addresses
+- **Network tracking**: `gateways` array with MAC addresses for location verification
 - **Productivity scoring**: Numeric rating system (1-3)
 - **Hardware identification**: `hwid` field for fraud prevention
 - **Timezone handling**: `timezoneOffset`, `timestampTranslated`
 - **Hash pagination**: Uses `next` parameter for pagination
 
 **Features:**
-- Comprehensive app monitoring (file paths, titles, URLs)
-- Network gateway tracking (MAC addresses)
+- GET endpoints are READ-ONLY for Mercor to review screenshots
+- Internal upload endpoint handles screenshot creation from desktop app
+- Network gateway tracking (MAC addresses) for fraud detection
 - Productivity analysis and categorization
 - Hardware and system identification
 - Project/Task association for billing
@@ -361,37 +384,40 @@ Priority: MEDIUM
 
 ### DAY 2: Frontend & Desktop App (Hours 24-48)
 
-#### **Phase 7: Web Application (Hours 24-30)**
+#### **Phase 7: Minimal Web Application (Hours 24-28)**
 ```bash
-Timeline: 6 hours
-Priority: HIGH
+Timeline: 4 hours (reduced from 6)
+Priority: MEDIUM
 ```
 
-**Pages to Build:**
-1. **Landing Page** (`/`)
-   - Simple, professional design
-   - Login for admins
+**Minimal Pages Required (per assignment):**
+1. **Employee Activation** (`/activate/[token]`) - **REQUIRED**
+   - Email verification landing
+   - Set password form
+   - Account activation confirmation
+   - Desktop app download link
 
-2. **Employee Activation** (`/activate/[token]`)
-   - Email verification
-   - Set password
-   - Download desktop app
-
-3. **Admin Dashboard** (`/admin`)
-   - View employees
-   - View time entries
-   - Basic project management
-
-4. **Download Page** (`/download`)
-   - Mac desktop app download
+2. **Download Page** (`/download`) - **REQUIRED**
+   - Mac desktop app download (.dmg file)
    - Installation instructions
+   - System requirements
 
-**Components:**
-- Responsive navigation
-- Forms with validation
-- Data tables
-- Loading states
-- Error handling
+3. **Landing Page** (`/`) - **OPTIONAL**
+   - Simple professional page
+   - Link to download page
+   - Basic branding
+
+**NO ADMIN DASHBOARD NEEDED:**
+- Mercor will use the APIs directly from their existing systems
+- No need for employee management UI
+- No need for time viewing UI
+- No need for project management UI
+
+**Simple Components:**
+- Password form with validation
+- Download button
+- Success/error messages
+- Basic responsive layout
 
 ---
 
@@ -496,17 +522,17 @@ Priority: CRITICAL
 1. ✅ **Database Schema** ➜ **COMPLETE** - Insightful-compatible foundation
 2. ✅ **Auth System** ➜ **COMPLETE** - Dual-model JWT authentication
 3. **Employee API** ➜ **NEXT** - Core entity, needed for projects
-4. **Time Tracking API** ➜ Most critical business logic
-5. **Web Onboarding** ➜ Required for desktop app users
-6. **Desktop Timer** ➜ Core functionality first
-7. **Projects/Tasks API** ➜ Enhancement to time tracking
-8. **Screenshot System** ➜ Additional verification
-9. **Admin Dashboard** ➜ Nice to have
+4. **Project/Task APIs** ➜ Required for time tracking
+5. **Time Tracking API** ➜ Most critical business logic (GET endpoints)
+6. **Screenshot API** ➜ Verification system (GET endpoints)
+7. **Internal APIs** ➜ Desktop app data creation endpoints
+8. **Minimal Web Pages** ➜ Employee activation & download
+9. **Desktop App** ➜ Timer with screenshot capture
 10. **Polish & Deploy** ➜ Production ready
 
-### **Current Status: Ready for Phase 3 (Employee API)** 🎯
-**Completed**: Database schema + Authentication system with Insightful compatibility
-**Next**: Implement Employee API endpoints matching Insightful contracts exactly
+### **Current Status: Ready for Phase 4 (Project & Task APIs)** 🎯
+**Completed**: Database schema + Authentication system + Employee API with full Insightful compatibility
+**Next**: Implement Project & Task API endpoints matching Insightful contracts exactly
 
 ---
 
