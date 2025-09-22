@@ -1,20 +1,21 @@
+import { hashPassword } from '../auth/password';
 import { prisma } from '../db';
+import { sendActivationEmail } from '../email/service';
 import { generateInsightfulId } from '../utils/id-generator';
 import { nowUnixMs } from '../utils/time';
-import { hashPassword } from '../auth/password';
-import { 
-  CreateEmployeeRequest, 
-  UpdateEmployeeRequest, 
-  EmployeeResponse,
-  EmployeeListResponse,
-  ValidationErrorResponse,
-  EntityNotFoundResponse,
-  NotFoundErrorResponse,
+import {
   ConflictErrorResponse,
-  createValidationError,
+  createConflictError,
+  CreateEmployeeRequest,
   createEntityNotFoundError,
   createNotFoundError,
-  createConflictError,
+  createValidationError,
+  EmployeeListResponse,
+  EmployeeResponse,
+  EntityNotFoundResponse,
+  NotFoundErrorResponse,
+  UpdateEmployeeRequest,
+  ValidationErrorResponse,
 } from '../validation/employee';
 
 export interface EmployeeServiceResult<T> {
@@ -110,8 +111,20 @@ export async function createEmployee(
       },
     });
 
-    // TODO: Send invitation email here
-    // await sendInvitationEmail(employee.email, employee.name, invitationToken);
+    console.log('generating activation mail')
+
+    // Send activation email
+    try {
+      const emailResult = await sendActivationEmail(employee.id, employee.email, employee.name);
+      console.log('emailresuly', emailResult)
+      if (!emailResult.success) {
+        console.error('Failed to send activation email:', emailResult.error);
+        // Don't fail the employee creation if email fails, just log it
+      }
+    } catch (error) {
+      console.error('Error sending activation email:', error);
+      // Don't fail the employee creation if email fails, just log it
+    }
 
     return {
       success: true,
@@ -359,15 +372,32 @@ export async function activateEmployeeAccount(
 
     const hashedPassword = await hashPassword(password);
 
-    // Create AuthUser
-    const authUser = await prisma.authUser.create({
-      data: {
-        email: employee.email,
-        password: hashedPassword,
-        role: 'EMPLOYEE',
-        isActive: true,
-      },
+    // Check if AuthUser already exists with this email
+    let authUser = await prisma.authUser.findUnique({
+      where: { email: employee.email },
     });
+
+    if (authUser) {
+      // AuthUser exists but not linked to employee - update it
+      authUser = await prisma.authUser.update({
+        where: { id: authUser.id },
+        data: {
+          password: hashedPassword,
+          role: 'EMPLOYEE',
+          isActive: true,
+        },
+      });
+    } else {
+      // Create new AuthUser
+      authUser = await prisma.authUser.create({
+        data: {
+          email: employee.email,
+          password: hashedPassword,
+          role: 'EMPLOYEE',
+          isActive: true,
+        },
+      });
+    }
 
     // Link AuthUser to Employee
     const updatedEmployee = await prisma.employee.update({

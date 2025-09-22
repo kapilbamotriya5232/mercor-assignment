@@ -20,7 +20,7 @@ export interface DecodedToken extends JWTPayload {
 /**
  * Generate a JWT token for an employee
  */
-export function generateJWT(employee: Partial<Employee>): string {
+export function generateJWT(employee: Partial<Employee> & { role: string }): string {
   if (!employee.id || !employee.email || !employee.organizationId || !employee.role) {
     throw new Error('Missing required employee fields for JWT generation');
   }

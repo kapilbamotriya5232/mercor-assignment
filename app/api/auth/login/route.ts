@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/db';
-import { comparePassword } from '../../../../lib/auth/password';
-import { generateJWT, generateRefreshToken } from '../../../../lib/auth/jwt';
-import { loginSchema } from '../../../../lib/validation/auth';
-import { logAuditEvent } from '../../../../lib/auth/auth-middleware';
 import { z } from 'zod';
+import { logAuditEvent } from '../../../../lib/auth/auth-middleware';
+import { generateJWT, generateRefreshToken } from '../../../../lib/auth/jwt';
+import { comparePassword } from '../../../../lib/auth/password';
+import { prisma } from '../../../../lib/db';
+import { loginSchema } from '../../../../lib/validation/auth';
 
 /**
  * @swagger
