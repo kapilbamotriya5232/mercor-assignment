@@ -4,15 +4,17 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "env": {
-    "DATABASE_URL": "@database-url",
-    "JWT_SECRET": "@jwt-secret",
-    "JWT_REFRESH_SECRET": "@jwt-refresh-secret",
-    "NEXTAUTH_URL": "@nextauth-url",
-    "NEXTAUTH_SECRET": "@nextauth-secret"
+    "DATABASE_URL": "postgresql://postgres:mercor%40123@db.rpikkzbttefrdxtidrkr.supabase.co:5432/postgres",
+    "JWT_SECRET": "your-super-secret-jwt-key-change-this-in-production",
+    "NEXT_PUBLIC_API_URL": "http://localhost:3000",
+    "RESEND_API_KEY": "",
+    "NODE_ENV": "development"
   },
   "build": {
     "env": {
-      "DATABASE_URL": "@database-url"
+      "DATABASE_URL": "postgresql://postgres:mercor%40123@db.rpikkzbttefrdxtidrkr.supabase.co:5432/postgres",
+      "JWT_SECRET": "your-super-secret-jwt-key-change-this-in-production",
+      "NODE_ENV": "development"
     }
   }
 }
