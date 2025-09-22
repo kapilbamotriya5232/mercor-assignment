@@ -223,23 +223,29 @@ Timeline: 4 hours
 Priority: CRITICAL
 ```
 
-**Implement mercor-compatible endpoints:**
-- `GET /api/v1/employees` - List all employees
-- `GET /api/v1/employees/{id}` - Get employee details
-- `POST /api/v1/employees` - Create employee (triggers email)
-- `PUT /api/v1/employees/{id}` - Update employee
-- `DELETE /api/v1/employees/{id}` - Deactivate employee
-- `POST /api/v1/employees/{id}/activate` - Activate account
+**Implement Insightful-compatible endpoints:**
+- `POST /api/v1/employee` - Create employee (triggers email invitation)
+- `GET /api/v1/employee/:id` - Get employee details
+- `GET /api/v1/employee` - List all employees
+- `PUT /api/v1/employee/:id` - Update employee
+- `GET /api/v1/employee/deactivate/:id` - Deactivate employee (unusual GET method)
+
+**Critical Implementation Notes:**
+- **Singular endpoint**: `/api/v1/employee` (NOT `/employees`)
+- **Deactivation uses GET**: Unusual but must match Insightful exactly
+- **Required fields**: name, email, teamId, sharedSettingsId
+- **Unix timestamps**: invited, createdAt, deactivated (milliseconds)
+- **Error format**: VALIDATION_ERROR with details array
 
 **Features:**
 - Email invitation system (using Resend API)
-- Account activation flow
+- Account activation flow (separate implementation)
 - System permissions tracking
 - **Complete OpenAPI documentation with:**
-  - Request/response schemas
-  - Error responses (400, 401, 404, 500)
-  - Query parameters & filters
-  - Example payloads
+  - Request/response schemas matching Insightful format
+  - Error responses (422, 404, 409)
+  - Exact field names and data types
+  - Unix timestamp handling
 
 ---
 
@@ -249,18 +255,27 @@ Timeline: 4 hours
 Priority: HIGH
 ```
 
-**Project Endpoints:**
-- `GET /api/v1/projects` - List projects
-- `POST /api/v1/projects` - Create project
-- `PUT /api/v1/projects/{id}` - Update project
-- `DELETE /api/v1/projects/{id}` - Archive project
-- `POST /api/v1/projects/{id}/assign` - Assign employees
+**Project Endpoints (Singular Paths):**
+- `POST /api/v1/project` - Create project with employee assignment
+- `GET /api/v1/project/:id` - Get project by ID
+- `GET /api/v1/project` - List all projects
+- `PUT /api/v1/project/:id` - Update project
+- `DELETE /api/v1/project/:id` - Delete project
 
-**Task Endpoints:**
-- `GET /api/v1/tasks` - List tasks
-- `POST /api/v1/tasks` - Create task (auto-link to project)
-- `PUT /api/v1/tasks/{id}` - Update task
-- `GET /api/v1/projects/{id}/tasks` - Get project tasks
+**Task Endpoints (Singular Paths):**
+- `POST /api/v1/task` - Create task (must belong to project)
+- `GET /api/v1/task/:id` - Get task by ID
+- `GET /api/v1/task` - List all tasks
+- `PUT /api/v1/task/:id` - Update task
+- `DELETE /api/v1/task/:id` - Delete task
+
+**Critical Implementation Notes:**
+- **Singular endpoints**: `/api/v1/project` and `/api/v1/task` (NOT plural)
+- **Employee assignment**: Via `employees[]` array in project/task create/update
+- **Project ID validation**: Must be exactly 15 characters
+- **Task-Project relationship**: Tasks require `projectId` field
+- **Payroll structure**: `billRate` and `overtimeBillrate` (lowercase 'r')
+- **Default values**: Projects get default statuses/priorities arrays
 
 ---
 
@@ -270,20 +285,30 @@ Timeline: 6 hours
 Priority: CRITICAL
 ```
 
-**Core Endpoints:**
-- `POST /api/v1/time/start` - Clock in
-- `POST /api/v1/time/stop` - Clock out
-- `GET /api/v1/time/current` - Get active session
-- `GET /api/v1/time/entries` - List time entries with filters
-- `GET /api/v1/shifts` - Get shift data
-- `GET /api/v1/activities` - Get activity data
+**Analytics Endpoints (Insightful Format):**
+- `GET /api/v1/analytics/window` - Get time tracking windows/entries
+- `GET /api/v1/analytics/project-time` - Get aggregated project time data
+
+**Additional Endpoints (Need Implementation):**
+- `POST /api/v1/time/start` - Start time tracking session (for desktop app)
+- `POST /api/v1/time/stop` - Stop time tracking session (for desktop app)
+- `GET /api/v1/time/current` - Get current active session (for desktop app)
+
+**Critical Implementation Notes:**
+- **Analytics paths**: `/api/v1/analytics/window` for detailed time windows
+- **Time format**: Unix timestamps in milliseconds throughout
+- **Timezone handling**: `timezoneOffset`, `startTranslated`, `endTranslated`
+- **Rich metadata**: Hardware ID (hwid), OS, computer name, domain
+- **Shift grouping**: Windows grouped by `shiftId`
+- **Payroll tracking**: billRate, overtimeBillRate per window
+- **Screenshot correlation**: `deletedScreenshots` count per window
 
 **Key Features:**
-- Timezone handling (store in UTC, translate on request)
-- Automatic shift creation
-- Activity tracking within shifts
-- Break time calculation
-- Duration calculations
+- Timezone handling (store in UTC, multiple timezone fields)
+- Hardware identification via `hwid` field
+- Automatic shift creation and window grouping
+- Comprehensive payroll rate tracking
+- System information collection (OS, computer name, etc.)
 
 ---
 
@@ -293,17 +318,30 @@ Timeline: 4 hours
 Priority: MEDIUM
 ```
 
-**Endpoints:**
-- `POST /api/v1/screenshots` - Upload screenshot
-- `GET /api/v1/screenshots` - List screenshots with filters
-- `GET /api/v1/screenshots/{id}` - Get specific screenshot
-- `DELETE /api/v1/screenshots/{id}` - Delete screenshot
+**Analytics Endpoints (Insightful Format):**
+- `GET /api/v1/analytics/screenshot` - List screenshots with basic filtering
+- `GET /api/v1/analytics/screenshot-paginate` - List screenshots with advanced pagination
+- `DELETE /api/v1/analytics/screenshot/:id` - Delete specific screenshot
+
+**Additional Endpoints (Need Implementation):**
+- `POST /api/v1/screenshots` - Upload screenshot (for desktop app)
+
+**Critical Implementation Notes:**
+- **Analytics paths**: `/api/v1/analytics/screenshot` for screenshot retrieval
+- **Rich metadata**: App details, file paths, window titles, URLs
+- **Network tracking**: `gateways` array with MAC addresses
+- **Productivity scoring**: Numeric rating system (1-3)
+- **Hardware identification**: `hwid` field for fraud prevention
+- **Timezone handling**: `timezoneOffset`, `timestampTranslated`
+- **Hash pagination**: Uses `next` parameter for pagination
 
 **Features:**
-- Base64 image handling
-- Permission flags for system access
-- Metadata storage (app, URL, productivity)
-- Efficient pagination
+- Comprehensive app monitoring (file paths, titles, URLs)
+- Network gateway tracking (MAC addresses)
+- Productivity analysis and categorization
+- Hardware and system identification
+- Project/Task association for billing
+- Image storage via `link` field (external storage)
 
 ---
 
