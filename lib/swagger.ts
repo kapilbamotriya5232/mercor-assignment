@@ -14,7 +14,7 @@ export const swaggerOptions: Options = {
         description: 'Development' 
       },
       { 
-        url: 'https://api.your-domain.com', 
+        url: 'https://mercor-assignment-olive.vercel.app/', 
         description: 'Production' 
       },
     ],

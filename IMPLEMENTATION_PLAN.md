@@ -31,7 +31,7 @@ export const swaggerOptions: Options = {
     },
     servers: [
       { url: 'http://localhost:3000', description: 'Development' },
-      { url: 'https://api.your-domain.com', description: 'Production' },
+      { url: 'https://mercor-assignment-olive.vercel.app/', description: 'Production' },
     ],
     components: {
       securitySchemes: {
