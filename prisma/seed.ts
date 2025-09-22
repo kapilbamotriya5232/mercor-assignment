@@ -1,167 +1,312 @@
+/**
+ * Seed script for Insightful-compatible database
+ * Creates default organization, teams, settings, and test data
+ */
+
 import { PrismaClient } from '../app/generated/prisma';
-import { hashPassword } from '../lib/auth/password';
-import { generateSecureToken } from '../lib/auth/password';
+import bcrypt from 'bcryptjs';
+import { generateInsightfulId } from '../lib/utils/id-generator';
+import { nowUnixMs } from '../lib/utils/time';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting seed...');
+  console.log('🌱 Starting database seed...');
 
-  // Create a default organization
+  // Clean existing data
+  await prisma.auditLog.deleteMany();
+  await prisma.apiToken.deleteMany();
+  await prisma.screenshot.deleteMany();
+  await prisma.window.deleteMany();
+  await prisma.task.deleteMany();
+  await prisma.project.deleteMany();
+  await prisma.employee.deleteMany();
+  await prisma.authUser.deleteMany();
+  await prisma.sharedSettings.deleteMany();
+  await prisma.team.deleteMany();
+  await prisma.organization.deleteMany();
+
+  // Create default organization
+  const orgId = generateInsightfulId();
   const organization = await prisma.organization.create({
     data: {
-      name: 'Mercor Demo Organization',
+      id: orgId,
+      name: 'Mercor Organization',
+      createdAt: nowUnixMs(),
     },
   });
   console.log('✅ Created organization:', organization.name);
 
-  // Create admin user (already activated)
-  const adminPassword = await hashPassword('Admin@123');
-  const admin = await prisma.employee.create({
+  // Create default team
+  const teamId = generateInsightfulId();
+  const team = await prisma.team.create({
+    data: {
+      id: teamId,
+      name: 'Default Team',
+      description: 'Default team for all employees',
+      organizationId: orgId,
+      default: true,
+      createdAt: nowUnixMs(),
+    },
+  });
+  console.log('✅ Created team:', team.name);
+
+  // Create default shared settings
+  const settingsId = generateInsightfulId();
+  const sharedSettings = await prisma.sharedSettings.create({
+    data: {
+      id: settingsId,
+      name: 'Default Settings',
+      type: 'personal',
+      settings: JSON.stringify({
+        screenshotInterval: 600000, // 10 minutes
+        trackingMode: 'automatic',
+        idleTimeout: 300000, // 5 minutes
+      }),
+      organizationId: orgId,
+      default: true,
+      createdAt: nowUnixMs(),
+    },
+  });
+  console.log('✅ Created shared settings:', sharedSettings.name);
+
+  // Create auth users with different roles
+  const adminPassword = await bcrypt.hash('Admin@123', 10);
+  const managerPassword = await bcrypt.hash('Manager@123', 10);
+  const employeePassword = await bcrypt.hash('Employee@123', 10);
+
+  const adminUser = await prisma.authUser.create({
     data: {
       email: 'admin@mercor.com',
-      name: 'Admin User',
       password: adminPassword,
+      role: 'ADMIN',
       isActive: true,
       isOnboarded: true,
-      role: 'ADMIN',
-      organizationId: organization.id,
     },
   });
-  console.log('✅ Created admin user:', admin.email);
 
-  // Create manager user (already activated)
-  const managerPassword = await hashPassword('Manager@123');
-  const manager = await prisma.employee.create({
+  const managerUser = await prisma.authUser.create({
     data: {
       email: 'manager@mercor.com',
-      name: 'Manager User',
       password: managerPassword,
+      role: 'MANAGER',
       isActive: true,
       isOnboarded: true,
-      role: 'MANAGER',
-      organizationId: organization.id,
     },
   });
-  console.log('✅ Created manager user:', manager.email);
 
-  // Create regular employee (already activated)
-  const employeePassword = await hashPassword('Employee@123');
-  const employee = await prisma.employee.create({
+  const employeeUser = await prisma.authUser.create({
     data: {
       email: 'employee@mercor.com',
-      name: 'John Doe',
       password: employeePassword,
+      role: 'EMPLOYEE',
       isActive: true,
       isOnboarded: true,
-      role: 'EMPLOYEE',
-      organizationId: organization.id,
     },
   });
-  console.log('✅ Created employee user:', employee.email);
 
-  // Create an unactivated employee (pending activation)
-  const pendingEmployee = await prisma.employee.create({
+  console.log('✅ Created auth users');
+
+  // Create corresponding Insightful employees
+  const adminEmployeeId = generateInsightfulId();
+  const managerEmployeeId = generateInsightfulId();
+  const employeeEmployeeId = generateInsightfulId();
+
+  const adminEmployee = await prisma.employee.create({
     data: {
-      email: 'pending@mercor.com',
-      name: null,
-      password: null,
-      isActive: false,
-      isOnboarded: false,
-      role: 'EMPLOYEE',
-      organizationId: organization.id,
-      activationToken: generateSecureToken(),
-      activationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+      id: adminEmployeeId,
+      email: 'admin@mercor.com',
+      name: 'Admin User',
+      teamId,
+      sharedSettingsId: settingsId,
+      accountId: generateInsightfulId(),
+      identifier: 'admin@mercor.com',
+      type: 'personal',
+      organizationId: orgId,
+      projects: JSON.stringify([]),
+      deactivated: BigInt(0),
+      invited: nowUnixMs(),
+      createdAt: nowUnixMs(),
+      authUserId: adminUser.id,
     },
   });
-  console.log('✅ Created pending employee:', pendingEmployee.email);
-  console.log('   Activation token:', pendingEmployee.activationToken);
 
-  // Create projects
+  const managerEmployee = await prisma.employee.create({
+    data: {
+      id: managerEmployeeId,
+      email: 'manager@mercor.com',
+      name: 'Manager User',
+      teamId,
+      sharedSettingsId: settingsId,
+      accountId: generateInsightfulId(),
+      identifier: 'manager@mercor.com',
+      type: 'personal',
+      organizationId: orgId,
+      projects: JSON.stringify([]),
+      deactivated: BigInt(0),
+      invited: nowUnixMs(),
+      createdAt: nowUnixMs(),
+      authUserId: managerUser.id,
+    },
+  });
+
+  const employeeEmployee = await prisma.employee.create({
+    data: {
+      id: employeeEmployeeId,
+      email: 'employee@mercor.com',
+      name: 'Employee User',
+      teamId,
+      sharedSettingsId: settingsId,
+      accountId: generateInsightfulId(),
+      identifier: 'employee@mercor.com',
+      type: 'personal',
+      organizationId: orgId,
+      projects: JSON.stringify([]),
+      deactivated: BigInt(0),
+      invited: nowUnixMs(),
+      createdAt: nowUnixMs(),
+      authUserId: employeeUser.id,
+    },
+  });
+
+  console.log('✅ Created Insightful employees');
+
+  // Create sample projects
+  const project1Id = generateInsightfulId();
+  const project2Id = generateInsightfulId();
+
   const project1 = await prisma.project.create({
     data: {
-      name: 'Website Redesign',
-      organizationId: organization.id,
-      employees: {
-        connect: [{ id: employee.id }, { id: manager.id }],
-      },
+      id: project1Id,
+      name: 'Web Development Project',
+      description: 'Building the new company website',
+      archived: false,
+      statuses: JSON.stringify(['To do', 'In progress', 'Done']),
+      priorities: JSON.stringify(['low', 'medium', 'high']),
+      billable: true,
+      payroll: JSON.stringify({
+        billRate: 50,
+        overtimeBillrate: 75,
+      }),
+      employees: JSON.stringify([employeeEmployeeId, managerEmployeeId]),
+      creatorId: adminEmployeeId,
+      organizationId: orgId,
+      teams: JSON.stringify([teamId]),
+      createdAt: nowUnixMs(),
     },
   });
-  console.log('✅ Created project:', project1.name);
 
   const project2 = await prisma.project.create({
     data: {
+      id: project2Id,
       name: 'Mobile App Development',
-      organizationId: organization.id,
-      employees: {
-        connect: [{ id: employee.id }],
-      },
+      description: 'Creating the mobile application',
+      archived: false,
+      statuses: JSON.stringify(['To do', 'In progress', 'Review', 'Done']),
+      priorities: JSON.stringify(['low', 'medium', 'high', 'critical']),
+      billable: true,
+      payroll: JSON.stringify({
+        billRate: 60,
+        overtimeBillrate: 90,
+      }),
+      employees: JSON.stringify([employeeEmployeeId]),
+      creatorId: adminEmployeeId,
+      organizationId: orgId,
+      teams: JSON.stringify([teamId]),
+      createdAt: nowUnixMs(),
     },
   });
-  console.log('✅ Created project:', project2.name);
 
-  // Create tasks
+  console.log('✅ Created projects:', project1.name, project2.name);
+
+  // Create default tasks for each project (1:1 mapping as recommended)
+  const task1Id = generateInsightfulId();
+  const task2Id = generateInsightfulId();
+
   const task1 = await prisma.task.create({
     data: {
-      name: 'Homepage Design',
-      projectId: project1.id,
-      employees: {
-        connect: [{ id: employee.id }],
-      },
+      id: task1Id,
+      name: 'Default Task - Web Development',
+      description: 'Default task for web development project',
+      projectId: project1Id,
+      status: 'In progress',
+      priority: 'medium',
+      billable: true,
+      employees: JSON.stringify([employeeEmployeeId, managerEmployeeId]),
+      creatorId: adminEmployeeId,
+      organizationId: orgId,
+      teams: JSON.stringify([teamId]),
+      createdAt: nowUnixMs(),
     },
   });
-  console.log('✅ Created task:', task1.name);
 
   const task2 = await prisma.task.create({
     data: {
-      name: 'User Authentication',
-      projectId: project2.id,
-      employees: {
-        connect: [{ id: employee.id }],
-      },
+      id: task2Id,
+      name: 'Default Task - Mobile App',
+      description: 'Default task for mobile app project',
+      projectId: project2Id,
+      status: 'To Do',
+      priority: 'high',
+      billable: true,
+      employees: JSON.stringify([employeeEmployeeId]),
+      creatorId: adminEmployeeId,
+      organizationId: orgId,
+      teams: JSON.stringify([teamId]),
+      createdAt: nowUnixMs(),
     },
   });
-  console.log('✅ Created task:', task2.name);
 
-  // Create sample time entries for the employee
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  yesterday.setHours(9, 0, 0, 0); // 9 AM yesterday
+  console.log('✅ Created tasks:', task1.name, task2.name);
 
-  const timeEntry1 = await prisma.timeEntry.create({
+  // Update employees with project assignments
+  await prisma.employee.update({
+    where: { id: employeeEmployeeId },
     data: {
-      startTime: yesterday,
-      endTime: new Date(yesterday.getTime() + 4 * 60 * 60 * 1000), // 4 hours later
-      durationInSeconds: 4 * 60 * 60, // 4 hours
-      employeeId: employee.id,
-      taskId: task1.id,
-      notes: 'Worked on homepage wireframes',
+      projects: JSON.stringify([project1Id, project2Id]),
     },
   });
-  console.log('✅ Created time entry for:', timeEntry1.durationInSeconds / 3600, 'hours');
 
-  const today = new Date();
-  today.setHours(10, 0, 0, 0); // 10 AM today
-
-  const timeEntry2 = await prisma.timeEntry.create({
+  await prisma.employee.update({
+    where: { id: managerEmployeeId },
     data: {
-      startTime: today,
-      endTime: null, // Currently running
-      durationInSeconds: 0,
-      employeeId: employee.id,
-      taskId: task2.id,
-      notes: 'Working on authentication module',
+      projects: JSON.stringify([project1Id]),
     },
   });
-  console.log('✅ Created active time entry (currently running)');
 
-  console.log('\n🎉 Seed completed successfully!');
-  console.log('\n📝 Test Credentials:');
-  console.log('   Admin: admin@mercor.com / Admin@123');
-  console.log('   Manager: manager@mercor.com / Manager@123');
-  console.log('   Employee: employee@mercor.com / Employee@123');
-  console.log('   Pending: pending@mercor.com (needs activation)');
-  console.log(`   Activation token for pending: ${pendingEmployee.activationToken}`);
+  console.log('✅ Updated employee project assignments');
+
+  // Create a sample API token for testing
+  const hashedToken = await bcrypt.hash('test_api_token_12345', 10);
+  await prisma.apiToken.create({
+    data: {
+      name: 'Test API Token',
+      token: hashedToken,
+      lastFourChars: '2345',
+      permissions: JSON.stringify(['read:all', 'write:all']),
+      isActive: true,
+      organizationId: orgId,
+    },
+  });
+
+  console.log('✅ Created test API token');
+
+  console.log(`
+🎉 Seed completed successfully!
+
+Test Credentials:
+-----------------
+Admin:    admin@mercor.com / Admin@123
+Manager:  manager@mercor.com / Manager@123
+Employee: employee@mercor.com / Employee@123
+
+API Token: test_api_token_12345
+
+Organization ID: ${orgId}
+Team ID: ${teamId}
+Project IDs: ${project1Id}, ${project2Id}
+Task IDs: ${task1Id}, ${task2Id}
+`);
 }
 
 main()

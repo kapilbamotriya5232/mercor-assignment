@@ -103,12 +103,13 @@ export async function POST(req: NextRequest) {
     const decodedJWT = verifyJWT(token);
     
     if (decodedJWT) {
-      // Fetch employee details
+      // Fetch employee details with auth user
       const employee = await prisma.employee.findUnique({
         where: { id: decodedJWT.employeeId },
+        include: { authUser: true },
       });
       
-      if (employee && employee.isActive) {
+      if (employee && employee.authUser && employee.authUser.isActive) {
         return NextResponse.json({
           valid: true,
           type: 'jwt',
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
             id: employee.id,
             email: employee.email,
             name: employee.name,
-            role: employee.role,
+            role: employee.authUser.role,
             organizationId: employee.organizationId,
           },
           organizationId: employee.organizationId,
@@ -218,9 +219,10 @@ export async function GET(req: NextRequest) {
       if (decodedJWT) {
         const employee = await prisma.employee.findUnique({
           where: { id: decodedJWT.employeeId },
+          include: { authUser: true },
         });
         
-        if (employee && employee.isActive) {
+        if (employee && employee.authUser && employee.authUser.isActive) {
           return NextResponse.json({
             valid: true,
             type: 'jwt',
@@ -228,7 +230,7 @@ export async function GET(req: NextRequest) {
               id: employee.id,
               email: employee.email,
               name: employee.name,
-              role: employee.role,
+              role: employee.authUser.role,
               organizationId: employee.organizationId,
             },
             organizationId: employee.organizationId,

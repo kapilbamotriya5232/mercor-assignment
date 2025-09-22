@@ -11,172 +11,286 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==================== BUSINESS MODELS ====================
+// ==================== INSIGHTFUL-COMPATIBLE MODELS ====================
 
-// The top-level entity for a company using the service.
-model Organization {
-  id        String    @id @default(cuid())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  // An organization has multiple employees and projects.
-  employees Employee[]
-  projects  Project[]
-  apiTokens ApiToken[]
+// Employee model matching Insightful's exact API contract
+model Employee {
+  id                String   @id @db.Char(15)  // Insightful format: 15-char ID
+  email             String   @unique
+  name              String
+  teamId            String   @db.Char(15)
+  sharedSettingsId  String   @db.Char(15)
+  accountId         String   @db.Char(15)
+  identifier        String   // Usually matches email
+  type              String   @default("personal")
+  organizationId    String   @db.Char(15)
+  projects          Json     @default("[]")  // Array of project IDs as JSON
+  deactivated       BigInt   @default(0)      // 0 = active, Unix timestamp = deactivated
+  invited           BigInt                    // Unix timestamp in milliseconds
+  createdAt         BigInt                    // Unix timestamp in milliseconds
+  
+  // Link to our authentication system
+  authUserId        String?  @unique
+  authUser          AuthUser? @relation(fields: [authUserId], references: [id])
+  
+  // Relations for Insightful compatibility
+  team              Team     @relation(fields: [teamId], references: [id])
+  sharedSettings    SharedSettings @relation(fields: [sharedSettingsId], references: [id])
+  organization      Organization @relation(fields: [organizationId], references: [id])
+  
+  // Time tracking relations
+  windows           Window[]
+  screenshots       Screenshot[]
+  
+  @@index([email])
+  @@index([organizationId])
+  @@index([teamId])
 }
 
-// Represents a user who tracks time. Corresponds to the Employee API.
-model Employee {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String?   // Name can be optional until fully onboarded
-  password     String?   // Hashed password, null until account is activated
-  isActive     Boolean   @default(false) // Inactive until account is activated
-  isOnboarded  Boolean   @default(false) // Track if employee completed onboarding
-  role         Role      @default(EMPLOYEE)
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  // Authentication tokens
-  activationToken   String?   @unique // Token sent via email for activation
-  activationExpiry  DateTime? // Expiry for activation token
-  resetToken        String?   @unique // Password reset token
-  resetTokenExpiry  DateTime? // Expiry for reset token
-
-  // An employee belongs to exactly one organization.
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-
-  // Many-to-many relationships for project and task assignments.
-  projects Project[]
-  tasks    Task[]
-
-  // An employee can have many time entries and screenshots.
-  timeEntries TimeEntry[]
-  screenshots Screenshot[]
+// Project model matching Insightful's exact API contract
+model Project {
+  id              String   @id @db.Char(15)
+  name            String
+  description     String?  @default("")
+  archived        Boolean  @default(false)
+  statuses        Json     @default("[\"To do\",\"In progress\",\"Done\"]")
+  priorities      Json     @default("[\"low\",\"medium\",\"high\"]")
+  billable        Boolean  @default(true)
+  payroll         Json?    // {billRate: number, overtimeBillrate: number}
+  employees       Json     @default("[]")  // Array of employee IDs
+  creatorId       String   @db.Char(15)
+  organizationId  String   @db.Char(15)
+  teams           Json     @default("[]")  // Array of team IDs
+  createdAt       BigInt                   // Unix timestamp in milliseconds
   
-  // Audit logs for this employee's actions
-  auditLogs AuditLog[]
-
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  tasks           Task[]
+  windows         Window[]
+  screenshots     Screenshot[]
+  
   @@index([organizationId])
+  @@index([archived])
+}
+
+// Task model matching Insightful's exact API contract
+model Task {
+  id              String   @id @db.Char(15)
+  name            String
+  description     String?  @default("")
+  projectId       String   @db.Char(15)
+  status          String   @default("To Do")
+  priority        String   @default("low")
+  billable        Boolean  @default(true)
+  payroll         Json?    // Optional task-specific rates
+  employees       Json     @default("[]")  // Array of employee IDs
+  creatorId       String   @db.Char(15)
+  organizationId  String   @db.Char(15)
+  teams           Json     @default("[]")  // Array of team IDs
+  createdAt       BigInt                   // Unix timestamp in milliseconds
+  
+  // Relations
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  windows         Window[]
+  screenshots     Screenshot[]
+  
+  @@index([projectId])
+  @@index([organizationId])
+}
+
+// Time tracking window (Insightful's time entry format)
+model Window {
+  id                    String   @id @default(uuid())
+  type                  String   @default("manual")  // manual or tracked
+  note                  String   @default("")
+  start                 BigInt                      // Unix timestamp in milliseconds
+  end                   BigInt?                     // Unix timestamp in milliseconds (null if running)
+  timezoneOffset        BigInt   @default(0)
+  shiftId               String   @default(uuid())
+  projectId             String   @db.Char(15)
+  taskId                String   @db.Char(15)
+  paid                  Boolean  @default(false)
+  billable              Boolean  @default(true)
+  overtime              Boolean  @default(false)
+  billRate              Float    @default(0)
+  overtimeBillRate      Float    @default(0)
+  payRate               Float    @default(0)
+  overtimePayRate       Float    @default(0)
+  taskStatus            String?
+  taskPriority          String?
+  user                  String                      // Username
+  computer              String
+  domain                String   @default("")
+  name                  String                      // Employee name
+  hwid                  String                      // Hardware ID
+  os                    String
+  osVersion             String
+  processed             Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  employeeId            String   @db.Char(15)
+  teamId                String   @db.Char(15)
+  sharedSettingsId      String   @db.Char(15)
+  organizationId        String   @db.Char(15)
+  startTranslated       BigInt
+  endTranslated         BigInt?
+  negativeTime          BigInt   @default(0)
+  deletedScreenshots    Int      @default(0)
+  
+  // Relations
+  employee              Employee @relation(fields: [employeeId], references: [id])
+  project               Project  @relation(fields: [projectId], references: [id])
+  task                  Task     @relation(fields: [taskId], references: [id])
+  
+  @@index([employeeId])
+  @@index([projectId])
+  @@index([taskId])
+  @@index([start])
+  @@index([shiftId])
+}
+
+// Screenshot model matching Insightful's exact API contract
+model Screenshot {
+  id                    String   @id @default(uuid())
+  type                  String   @default("scheduled")  // scheduled or manual
+  timestamp             BigInt                          // Unix timestamp in milliseconds
+  timezoneOffset        BigInt   @default(0)
+  gateways              Json     @default("[]")         // MAC addresses array
+  app                   String
+  appFileName           String
+  appFilePath           String
+  title                 String
+  url                   String   @default("")
+  document              String   @default("")
+  windowId              String   @default(uuid())
+  shiftId               String   @default("")
+  projectId             String   @db.Char(15)
+  taskId                String   @db.Char(15)
+  taskStatus            String?
+  taskPriority          String?
+  user                  String                          // Username
+  computer              String
+  domain                String   @default("")
+  name                  String                          // Employee name
+  hwid                  String                          // Hardware ID
+  os                    String
+  osVersion             String
+  active                Boolean  @default(true)
+  processed             Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  employeeId            String   @db.Char(15)
+  teamId                String   @db.Char(15)
+  sharedSettingsId      String   @db.Char(15)
+  organizationId        String   @db.Char(15)
+  appId                 String   @default("")
+  appLabelId            String   @default("")
+  categoryId            String   @default("")
+  categoryLabelId       String   @default("")
+  productivity          Int      @default(1)           // 1-3 scale
+  site                  String   @default("")
+  timestampTranslated   BigInt
+  link                  String   @default("")          // Screenshot image URL/path
+  
+  // Relations
+  employee              Employee @relation(fields: [employeeId], references: [id])
+  project               Project  @relation(fields: [projectId], references: [id])
+  task                  Task     @relation(fields: [taskId], references: [id])
+  
+  @@index([employeeId])
+  @@index([projectId])
+  @@index([taskId])
+  @@index([timestamp])
+}
+
+// Organization - top level entity
+model Organization {
+  id              String   @id @db.Char(15)
+  name            String
+  createdAt       BigInt                    // Unix timestamp in milliseconds
+  
+  employees       Employee[]
+  projects        Project[]
+  tasks           Task[]
+  teams           Team[]
+  sharedSettings  SharedSettings[]
+  apiTokens       ApiToken[]
+}
+
+// Team model for employee grouping
+model Team {
+  id              String   @id @db.Char(15)
+  name            String
+  description     String?  @default("")
+  organizationId  String   @db.Char(15)
+  default         Boolean  @default(false)
+  createdAt       BigInt                    // Unix timestamp in milliseconds
+  
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  employees       Employee[]
+  
+  @@index([organizationId])
+}
+
+// Shared settings for employees
+model SharedSettings {
+  id              String   @id @db.Char(15)
+  name            String
+  type            String   @default("personal")  // personal or office
+  settings        Json?    @default("{}")         // JSON settings object
+  organizationId  String   @db.Char(15)
+  default         Boolean  @default(false)
+  createdAt       BigInt                    // Unix timestamp in milliseconds
+  
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  employees       Employee[]
+  
+  @@index([organizationId])
+}
+
+// ==================== OUR AUTHENTICATION SYSTEM ====================
+
+// Our internal auth user (separate from Insightful Employee)
+model AuthUser {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String?   // Hashed password
+  role            Role      @default(EMPLOYEE)
+  isActive        Boolean   @default(false)
+  isOnboarded     Boolean   @default(false)
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Activation & reset tokens
+  activationToken   String?   @unique
+  activationExpiry  DateTime?
+  resetToken        String?   @unique
+  resetTokenExpiry  DateTime?
+  
+  // Link to Insightful employee (one-to-one)
+  employee        Employee?
+  
+  // Audit logs
+  auditLogs       AuditLog[]
+  
   @@index([email])
 }
 
-// Role enum for employee permissions
+// Role enum for our auth system
 enum Role {
   ADMIN
   MANAGER
   EMPLOYEE
 }
 
-// Corresponds to the Project API.
-model Project {
-  id        String    @id @default(cuid())
-  name      String
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  // A project belongs to one organization.
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-
-  // A project can have many assigned employees.
-  employees Employee[]
-
-  // A project contains multiple tasks. Per the spec, this could be a single "default task".
-  tasks Task[]
-
-  @@index([organizationId])
-}
-
-// Corresponds to the Task API. This is the object time is logged against.
-model Task {
-  id        String    @id @default(cuid())
-  name      String // e.g., "Default Task for Project X"
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  // A task must belong to a project.
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  // A task has its own list of assigned employees.
-  employees Employee[]
-
-  // A task can have many time entries logged against it.
-  timeEntries TimeEntry[]
-
-  @@index([projectId])
-}
-
-// Represents a single clock-in/clock-out session. Corresponds to the Time Tracking API.
-model TimeEntry {
-  id                String      @id @default(cuid())
-  startTime         DateTime    // When the user clocked in.
-  endTime           DateTime?   // When the user clocked out. Null if the timer is currently running.
-  durationInSeconds Int         @default(0) // Can be calculated and stored upon clock-out.
-  breakDuration     Int         @default(0) // Break time in seconds
-  notes             String?     // Optional notes for the time entry
-  createdAt         DateTime    @default(now())
-
-  // The time entry is logged by one employee against one task.
-  employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  taskId     String
-  task       Task     @relation(fields: [taskId], references: [id])
-
-  // A single time entry can have multiple screenshots associated with it.
-  screenshots Screenshot[]
-
-  @@index([employeeId])
-  @@index([taskId])
-  @@index([startTime])
-}
-
-// Represents a captured screenshot. Corresponds to the Screenshots API.
-model Screenshot {
-  id              String   @id @default(cuid())
-  url             String?  // URL pointing to the stored image (null if stored as base64)
-  base64Data      String?  @db.Text // Base64 encoded image data (for development)
-  timestamp       DateTime // The exact time the screenshot was captured.
-  hasPermissions  Boolean  @default(true) // The "permission flag" to indicate if the app could take a proper screenshot.
-  
-  // Metadata
-  appName         String?  // Active application name
-  windowTitle     String?  // Active window title
-  productivity    Int?     // Productivity score (0-100)
-  
-  // System info
-  macAddress      String?
-  ipAddress       String?
-  computerName    String?
-  osVersion       String?
-
-  // The screenshot was taken for a specific employee during a specific time entry.
-  employeeId  String
-  employee    Employee    @relation(fields: [employeeId], references: [id])
-  timeEntryId String
-  timeEntry   TimeEntry   @relation(fields: [timeEntryId], references: [id])
-
-  createdAt   DateTime    @default(now())
-
-  @@index([employeeId])
-  @@index([timeEntryId])
-  @@index([timestamp])
-}
-
-// ==================== AUTHENTICATION MODELS ====================
-
 // API tokens for system-to-system authentication
 model ApiToken {
   id             String    @id @default(cuid())
   name           String    // Friendly name for the token
   token          String    @unique // The actual token (hashed)
-  lastFourChars  String    // Last 4 characters of token for identification
+  lastFourChars  String    // Last 4 characters for identification
   permissions    Json      // JSON array of permissions/scopes
   isActive       Boolean   @default(true)
   lastUsedAt     DateTime?
@@ -185,7 +299,7 @@ model ApiToken {
   updatedAt      DateTime  @updatedAt
 
   // API token belongs to an organization
-  organizationId String
+  organizationId String    @db.Char(15)
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([token])
@@ -195,7 +309,7 @@ model ApiToken {
 // Audit log for security and compliance
 model AuditLog {
   id         String   @id @default(cuid())
-  action     String   // e.g., "LOGIN", "LOGOUT", "CREATE_PROJECT", etc.
+  action     String   // e.g., "LOGIN", "LOGOUT", "CREATE_PROJECT"
   entityType String?  // e.g., "Employee", "Project", "Task"
   entityId   String?  // ID of the affected entity
   metadata   Json?    // Additional data about the action
@@ -204,10 +318,10 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   // Who performed the action
-  employeeId String?
-  employee   Employee? @relation(fields: [employeeId], references: [id])
+  authUserId String?
+  authUser   AuthUser? @relation(fields: [authUserId], references: [id])
 
-  @@index([employeeId])
+  @@index([authUserId])
   @@index([action])
   @@index([createdAt])
 }

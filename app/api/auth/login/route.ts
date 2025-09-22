@@ -109,15 +109,19 @@ export async function POST(req: NextRequest) {
     // Validate request body
     const validatedData = loginSchema.parse(body);
     
-    // Find employee by email
-    const employee = await prisma.employee.findUnique({
+    // Find AuthUser by email with associated Employee
+    const authUser = await prisma.authUser.findUnique({
       where: { email: validatedData.email },
       include: {
-        organization: true,
+        employee: {
+          include: {
+            organization: true,
+          },
+        },
       },
     });
     
-    if (!employee) {
+    if (!authUser || !authUser.employee) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
@@ -125,15 +129,15 @@ export async function POST(req: NextRequest) {
     }
     
     // Check if account is activated
-    if (!employee.isActive) {
+    if (!authUser.isActive) {
       return NextResponse.json(
         { error: 'Account not activated. Please check your email for activation link.' },
         { status: 403 }
       );
     }
     
-    // Check if employee has set a password (account activated)
-    if (!employee.password) {
+    // Check if user has set a password (account activated)
+    if (!authUser.password) {
       return NextResponse.json(
         { error: 'Account setup not completed. Please use the activation link from your email.' },
         { status: 403 }
@@ -143,14 +147,14 @@ export async function POST(req: NextRequest) {
     // Verify password
     const isPasswordValid = await comparePassword(
       validatedData.password,
-      employee.password
+      authUser.password
     );
     
     if (!isPasswordValid) {
       // Log failed login attempt
       await logAuditEvent(
         'LOGIN_FAILED',
-        employee.id,
+        authUser.id,
         { email: validatedData.email, reason: 'Invalid password' }
       );
       
@@ -160,20 +164,29 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Generate tokens
-    const token = generateJWT(employee);
+    const employee = authUser.employee;
+    
+    // Generate tokens (using employee data for compatibility)
+    const tokenPayload = {
+      id: employee.id,
+      email: employee.email,
+      name: employee.name,
+      role: authUser.role,
+      organizationId: employee.organizationId,
+    };
+    const token = generateJWT(tokenPayload);
     const refreshToken = generateRefreshToken(employee.id);
     
     // Update last login time
-    await prisma.employee.update({
-      where: { id: employee.id },
+    await prisma.authUser.update({
+      where: { id: authUser.id },
       data: { lastLoginAt: new Date() },
     });
     
     // Log successful login
     await logAuditEvent(
       'LOGIN_SUCCESS',
-      employee.id,
+      authUser.id,
       { email: validatedData.email }
     );
     
@@ -186,7 +199,7 @@ export async function POST(req: NextRequest) {
         id: employee.id,
         email: employee.email,
         name: employee.name,
-        role: employee.role,
+        role: authUser.role,
         organizationId: employee.organizationId,
       },
     });

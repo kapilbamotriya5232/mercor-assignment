@@ -39,20 +39,27 @@ export async function authenticateRequest(req: NextRequest): Promise<AuthResult>
       const decodedToken = verifyJWT(bearerToken);
       
       if (decodedToken) {
-        // Fetch the employee to ensure they exist and are active
+        // Fetch the employee to ensure they exist
         const employee = await prisma.employee.findUnique({
           where: { id: decodedToken.employeeId },
         });
         
-        if (employee && employee.isActive) {
-          return {
-            isAuthenticated: true,
-            type: 'jwt',
-            employeeId: employee.id,
-            employee,
-            organizationId: employee.organizationId,
-            token: decodedToken,
-          };
+        if (employee && employee.authUserId) {
+          // Fetch the AuthUser to check if they are active
+          const authUser = await prisma.authUser.findUnique({
+            where: { id: employee.authUserId },
+          });
+          
+          if (authUser && authUser.isActive) {
+            return {
+              isAuthenticated: true,
+              type: 'jwt',
+              employeeId: employee.id,
+              employee: employee as any,
+              organizationId: employee.organizationId,
+              token: decodedToken,
+            };
+          }
         }
         
         return {
@@ -141,15 +148,15 @@ export function requireRole(
       );
     }
     
-    // For JWT, check the employee's role
-    if (auth.employee) {
+    // For JWT, check the employee's role from AuthUser
+    if (auth.employee && (auth.employee as any).authUser) {
       const allowedRoles = {
         ADMIN: ['ADMIN'],
         MANAGER: ['ADMIN', 'MANAGER'],
         EMPLOYEE: ['ADMIN', 'MANAGER', 'EMPLOYEE'],
       };
       
-      if (allowedRoles[role].includes(auth.employee.role)) {
+      if (allowedRoles[role].includes((auth.employee as any).authUser.role)) {
         return handler(req, auth);
       }
     }
@@ -216,7 +223,7 @@ export async function optionalAuth(
  */
 export async function logAuditEvent(
   action: string,
-  employeeId?: string,
+  authUserId?: string,
   metadata?: any,
   entityType?: string,
   entityId?: string
@@ -225,7 +232,7 @@ export async function logAuditEvent(
     await prisma.auditLog.create({
       data: {
         action,
-        employeeId,
+        authUserId,
         metadata,
         entityType,
         entityId,
