@@ -62,6 +62,8 @@ model Project {
   organizationId  String   @db.Char(15)
   teams           Json     @default("[]")  // Array of team IDs
   createdAt       BigInt                   // Unix timestamp in milliseconds
+  deadline        BigInt?                  // Optional deadline timestamp in milliseconds
+  screenshotSettings Json?                 // Optional screenshot configuration settings
   
   // Relations
   organization    Organization @relation(fields: [organizationId], references: [id])
@@ -88,6 +90,8 @@ model Task {
   organizationId  String   @db.Char(15)
   teams           Json     @default("[]")  // Array of team IDs
   createdAt       BigInt                   // Unix timestamp in milliseconds
+  deadline        BigInt?                  // Optional deadline timestamp in milliseconds
+  labels          Json     @default("[]")  // Optional labels array
   
   // Relations
   project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)

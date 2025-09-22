@@ -1,0 +1,342 @@
+### Project API Testing - Insightful Compatible
+### This file tests all Project endpoints to ensure they match Insightful's API contract exactly
+
+### Variables
+@host = http://localhost:3000
+@token = YOUR_JWT_TOKEN_HERE
+@employeeId1 = wk59h7b0cq8b1oq
+@employeeId2 = w8jt496hid4shz3
+@projectId = wiotv0ilptz9uqg
+
+### ===========================================
+### 1. CREATE PROJECT - POST /api/v1/project
+### ===========================================
+
+### Test: Create project with all fields (matching Insightful contract)
+POST {{host}}/api/v1/project
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Your project name",
+  "description": "Your project description",
+  "employees": [
+    "{{employeeId1}}",
+    "{{employeeId2}}"
+  ],
+  "statuses": [
+    "To Do",
+    "In progress",
+    "Done"
+  ],
+  "priorities": [
+    "low",
+    "medium",
+    "high"
+  ],
+  "billable": true,
+  "payroll": {
+    "billRate": 25,
+    "overtimeBillrate": 55
+  }
+}
+
+### Expected Response (200):
+# {
+#   "id": "wiotv0ilptz9uqg",
+#   "archived": false,
+#   "statuses": ["To Do", "In progress", "Done"],
+#   "priorities": ["low", "medium", "high"],
+#   "billable": true,
+#   "payroll": {
+#     "billRate": 25,
+#     "overtimeBillrate": 55
+#   },
+#   "name": "Your project name",
+#   "description": "Your project description",
+#   "employees": ["wk59h7b0cq8b1oq", "w8jt496hid4shz3"],
+#   "creatorId": "wuiz-yuxbtr9aul",
+#   "organizationId": "wbtmikjuiimvh3z",
+#   "teams": ["wautlmuhdnndn7f"],
+#   "createdAt": 1592926661681
+# }
+
+### Test: Create project with minimal required fields
+POST {{host}}/api/v1/project
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Minimal Project",
+  "employees": ["{{employeeId1}}"]
+}
+
+### Test: Validation error - missing name
+POST {{host}}/api/v1/project
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "employees": ["{{employeeId1}}"]
+}
+
+### Expected Error Response (422):
+# {
+#   "type": "VALIDATION_ERROR",
+#   "message": "Parameters validation error!",
+#   "details": [
+#     {
+#       "type": "required",
+#       "field": "name",
+#       "message": "The 'name' field is required!"
+#     }
+#   ]
+# }
+
+### Test: Validation error - missing employees
+POST {{host}}/api/v1/project
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Project without employees"
+}
+
+### Test: Validation error - empty employees array
+POST {{host}}/api/v1/project
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Project with empty employees",
+  "employees": []
+}
+
+### ===========================================
+### 2. GET PROJECT BY ID - GET /api/v1/project/:id
+### ===========================================
+
+### Test: Get project by valid ID
+GET {{host}}/api/v1/project/{{projectId}}
+Authorization: Bearer {{token}}
+
+### Expected Response (200):
+# {
+#   "id": "wj7qcsinkdn7ugd",
+#   "archived": false,
+#   "statuses": ["To do", "On hold", "In progress", "Done"],
+#   "priorities": ["low", "medium", "high"],
+#   "billable": true,
+#   "payroll": {
+#     "billRate": 1,
+#     "overtimeBillRate": 1
+#   },
+#   "name": "Project 2",
+#   "employees": [],
+#   "creatorId": "wlaxrvp-a_wznu1",
+#   "organizationId": "wbtmikjuiimvh3z",
+#   "teams": [],
+#   "createdAt": 1592568826171
+# }
+
+### Test: Validation error - ID too short (14 characters)
+GET {{host}}/api/v1/project/wj7qcsinkdn7ug
+Authorization: Bearer {{token}}
+
+### Expected Error Response (422):
+# {
+#   "type": "VALIDATION_ERROR",
+#   "message": "Parameters validation error!",
+#   "details": [
+#     {
+#       "type": "stringLength",
+#       "expected": 15,
+#       "actual": 14,
+#       "field": "id",
+#       "message": "The 'id' field length must be 15 characters long!"
+#     }
+#   ]
+# }
+
+### Test: Validation error - ID too long (16 characters)
+GET {{host}}/api/v1/project/wj7qcsinkdn7ugd1
+Authorization: Bearer {{token}}
+
+### Test: Not found error - non-existent project
+GET {{host}}/api/v1/project/xxxxxxxxxxxxx15
+Authorization: Bearer {{token}}
+
+### Expected Error Response (404):
+# {
+#   "type": "EntityNotFound",
+#   "message": "Project doesn't exist."
+# }
+
+### ===========================================
+### 3. LIST ALL PROJECTS - GET /api/v1/project
+### ===========================================
+
+### Test: List all projects
+GET {{host}}/api/v1/project
+Authorization: Bearer {{token}}
+
+### Expected Response (200) - Array of projects:
+# [
+#   {
+#     "id": "w7wn6lphwsq820i",
+#     "archived": false,
+#     "statuses": ["To do", "On hold", "In progress", "Done"],
+#     "priorities": ["low", "medium", "high"],
+#     "billable": true,
+#     "payroll": {
+#       "billRate": 1,
+#       "overtimeBillRate": 1
+#     },
+#     "name": "Project 1",
+#     "employees": [],
+#     "creatorId": "wr-sz9z22eojwz9",
+#     "organizationId": "wbtmikjuiimvh3z",
+#     "teams": [],
+#     "createdAt": 1592571902985
+#   }
+# ]
+
+### Test: Unauthorized - no token
+GET {{host}}/api/v1/project
+
+### Expected Error Response (401):
+# { "error": "Unauthorized" }
+
+### ===========================================
+### 4. UPDATE PROJECT - PUT /api/v1/project/:id
+### ===========================================
+
+### Test: Update project with all fields
+PUT {{host}}/api/v1/project/{{projectId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": "{{projectId}}",
+  "name": "New Project name",
+  "description": "New project description",
+  "employees": ["{{employeeId1}}"]
+}
+
+### Expected Response (200) - Updated project object
+
+### Test: Update project - partial update (name only)
+PUT {{host}}/api/v1/project/{{projectId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Updated Name Only"
+}
+
+### Test: Update project - employees only
+PUT {{host}}/api/v1/project/{{projectId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "employees": ["{{employeeId2}}"]
+}
+
+### Test: Update project - archive it
+PUT {{host}}/api/v1/project/{{projectId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "archived": true
+}
+
+### Test: Update project - change payroll rates
+PUT {{host}}/api/v1/project/{{projectId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "payroll": {
+    "billRate": 50,
+    "overtimeBillrate": 75
+  }
+}
+
+### Test: Not found error - update non-existent project
+PUT {{host}}/api/v1/project/xxxxxxxxxxxxx15
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "This will fail"
+}
+
+### Expected Error Response (404):
+# {
+#   "type": "EntityNotFound",
+#   "message": "Project doesn't exist."
+# }
+
+### Test: Validation error - invalid employee ID
+PUT {{host}}/api/v1/project/{{projectId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "employees": ["invalid_employee_id"]
+}
+
+### ===========================================
+### 5. DELETE PROJECT - DELETE /api/v1/project/:id
+### ===========================================
+
+### Test: Delete project
+DELETE {{host}}/api/v1/project/{{projectId}}
+Authorization: Bearer {{token}}
+
+### Expected Response (200) - Returns deleted project object
+
+### Test: Not found error - delete non-existent project
+DELETE {{host}}/api/v1/project/xxxxxxxxxxxxx15
+Authorization: Bearer {{token}}
+
+### Expected Error Response (404):
+# {
+#   "type": "EntityNotFound",
+#   "message": "Project doesn't exist."
+# }
+
+### Test: Validation error - invalid ID format
+DELETE {{host}}/api/v1/project/short_id
+Authorization: Bearer {{token}}
+
+### Expected Error Response (422):
+# {
+#   "type": "VALIDATION_ERROR",
+#   "message": "Parameters validation error!",
+#   "details": [
+#     {
+#       "type": "stringLength",
+#       "expected": 15,
+#       "actual": 8,
+#       "field": "id",
+#       "message": "The 'id' field length must be 15 characters long!"
+#     }
+#   ]
+# }
+
+### ===========================================
+### NOTES ON INSIGHTFUL COMPATIBILITY:
+### ===========================================
+# 1. Endpoint path is singular: /api/v1/project (NOT /projects)
+# 2. Project IDs must be exactly 15 characters
+# 3. Payroll field uses "overtimeBillrate" with lowercase 'r'
+# 4. Timestamps are Unix milliseconds (e.g., 1592926661681)
+# 5. Teams array is auto-populated from assigned employees
+# 6. Default statuses: ["To do", "On hold", "In progress", "Done"]
+# 7. Default priorities: ["low", "medium", "high"]
+# 8. Projects have an "archived" boolean flag (false by default)
+# 9. Employee assignment is done via employees[] array in request
+# 10. Delete returns the deleted project object (not just success)
