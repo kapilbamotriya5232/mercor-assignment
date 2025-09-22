@@ -6,15 +6,15 @@
   "env": {
     "DATABASE_URL": "postgresql://postgres:mercor%40123@db.rpikkzbttefrdxtidrkr.supabase.co:5432/postgres",
     "JWT_SECRET": "your-super-secret-jwt-key-change-this-in-production",
-    "NEXT_PUBLIC_API_URL": "http://localhost:3000",
+    "NEXT_PUBLIC_API_URL": "https://mercor-assignment-olive.vercel.app",
     "RESEND_API_KEY": "",
-    "NODE_ENV": "production"
+    "NODE_ENV": "development"
   },
   "build": {
     "env": {
       "DATABASE_URL": "postgresql://postgres:mercor%40123@db.rpikkzbttefrdxtidrkr.supabase.co:5432/postgres",
       "JWT_SECRET": "your-super-secret-jwt-key-change-this-in-production",
-      "NODE_ENV": "production"
+      "NODE_ENV": "development"
     }
   }
 }
