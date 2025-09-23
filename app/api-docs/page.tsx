@@ -8,11 +8,30 @@ export default function ApiDocsPage() {
   const [swaggerSpec, setSwaggerSpec] = useState<any>(null);
 
   useEffect(() => {
-    // Prefer static file generated at build time for production reliability
-    fetch('/swagger.json')
-      .then(response => response.json())
-      .then(data => setSwaggerSpec(data))
-      .catch(error => console.error('Error fetching swagger spec:', error));
+    // Prefer static file; fall back to API route in dev
+    const load = async () => {
+      try {
+        const res = await fetch('/swagger.json');
+        if (res.ok) {
+          const data = await res.json();
+          setSwaggerSpec(data);
+          return;
+        }
+      } catch (_) {}
+
+      try {
+        const res = await fetch('/api/swagger');
+        if (res.ok) {
+          const data = await res.json();
+          setSwaggerSpec(data);
+          return;
+        }
+      } catch (error) {
+        console.error('Error fetching swagger spec:', error);
+      }
+    };
+
+    load();
   }, []);
 
   if (!swaggerSpec) {

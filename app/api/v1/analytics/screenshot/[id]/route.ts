@@ -5,6 +5,7 @@ import {
   validateScreenshotId,
 } from '@/lib/validation/screenshot';
 import { NextRequest, NextResponse } from 'next/server';
+import { jsonWithBigInts } from '@/lib/utils/json';
 
 /**
  * @swagger
@@ -44,28 +45,28 @@ export const DELETE = requireAuth(async (req: NextRequest, auth) => {
 
     const idValidationError = validateScreenshotId(id);
     if (idValidationError) {
-      return NextResponse.json(idValidationError, { status: 422 });
+      return jsonWithBigInts(idValidationError, { status: 422 });
     }
 
     const organizationId = auth.organizationId;
     if (!organizationId) {
       const error = createValidationError("organizationId", "Organization ID is required", "required");
-      return NextResponse.json(error, { status: 422 });
+      return jsonWithBigInts(error, { status: 422 });
     }
 
     const result = await deleteScreenshot(id, organizationId);
 
     if (!result.success) {
       if (result.error === 'Screenshot not found') {
-        return NextResponse.json({ error: result.error }, { status: 404 });
+        return jsonWithBigInts({ error: result.error }, { status: 404 });
       }
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return jsonWithBigInts({ error: result.error }, { status: 500 });
     }
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error(`Error in DELETE /api/v1/analytics/screenshot/[id]:`, error);
     const validationError = createValidationError("general", "Internal server error", "internal");
-    return NextResponse.json(validationError, { status: 500 });
+    return jsonWithBigInts(validationError, { status: 500 });
   }
 });

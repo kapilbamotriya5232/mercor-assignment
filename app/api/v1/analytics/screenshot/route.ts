@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { requireAuth, AuthResult } from '@/lib/auth/auth-middleware';
+import { jsonWithBigInts } from '@/lib/utils/json';
 import { listScreenshots } from '@/lib/services/screenshot';
 import {
   screenshotQuerySchema,
@@ -61,13 +62,13 @@ export const GET = requireAuth(async (req: NextRequest, auth: AuthResult) => {
         firstError.message,
         "invalid_type"
       );
-      return NextResponse.json(validationError, { status: 422 });
+      return jsonWithBigInts(validationError, { status: 422 });
     }
 
     const organizationId = auth.organizationId;
     if (!organizationId) {
       const error = createValidationError("organizationId", "Organization ID is required", "required");
-      return NextResponse.json(error, { status: 422 });
+      return jsonWithBigInts(error, { status: 422 });
     }
 
     const filters = {
@@ -79,13 +80,13 @@ export const GET = requireAuth(async (req: NextRequest, auth: AuthResult) => {
     const result = await listScreenshots(organizationId, filters);
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return jsonWithBigInts({ error: result.error }, { status: 500 });
     }
 
-    return NextResponse.json(result.data, { status: 200 });
+    return jsonWithBigInts(result.data, { status: 200 });
   } catch (error) {
     console.error('Error in GET /api/v1/analytics/screenshot:', error);
     const validationError = createValidationError("general", "Internal server error", "internal");
-    return NextResponse.json(validationError, { status: 500 });
+    return jsonWithBigInts(validationError, { status: 500 });
   }
 });
