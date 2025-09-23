@@ -1,4 +1,5 @@
 import { Options } from 'swagger-jsdoc';
+import path from 'path';
 
 export const swaggerOptions: Options = {
   definition: {
@@ -33,5 +34,10 @@ export const swaggerOptions: Options = {
       },
     },
   },
-  apis: ['./app/api/**/*.{js,ts}', './app/api/auth/**/*.{js,ts}'], // Path to API routes including auth
+  apis: [
+    path.resolve(process.cwd(), 'app/api/**/*.js'),
+    path.resolve(process.cwd(), 'app/api/auth/**/*.js'),
+    path.resolve(process.cwd(), 'app/api/**/*.ts'),
+    path.resolve(process.cwd(), 'app/api/auth/**/*.ts'),
+  ],
 };
