@@ -2,6 +2,67 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { resendActivationEmail } from '@/lib/email/service';
 
+/**
+ * @swagger
+ * /api/auth/resend-activation:
+ *   post:
+ *     summary: Resend activation email
+ *     description: Resends the activation email to a user who has not yet activated their account.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: Activation email resent successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: If an account exists with this email, a new activation link has been sent.
+ *       400:
+ *         description: Bad request, such as invalid email format or if the account is already activated.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: VALIDATION_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: Invalid request data
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: Failed to resend activation email. Please try again later.
+ */
 // Request schema for resending activation
 const resendRequestSchema = z.object({
   email: z.string().email('Invalid email address'),
