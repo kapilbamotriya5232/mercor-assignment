@@ -3,12 +3,6 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/internal/cron/log-inactivity",
-      "schedule": "*/10 * * * *"
-    }
-  ],
   "env": {
     "DATABASE_URL": "postgresql://postgres:mercor%40123@db.rpikkzbttefrdxtidrkr.supabase.co:5432/postgres",
     "JWT_SECRET": "your-super-secret-jwt-key-change-this-in-production",

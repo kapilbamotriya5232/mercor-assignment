@@ -33,5 +33,5 @@ export const swaggerOptions: Options = {
       },
     },
   },
-  apis: ['./app/api/**/*.ts', './app/api/auth/**/*.ts'], // Path to API routes including auth
+  apis: ['./app/api/**/*.ts', './app/api/auth/**/*.ts', './app/api/**/*.js', './app/api/auth/**/*.js'], // Path to API routes including auth
 };
