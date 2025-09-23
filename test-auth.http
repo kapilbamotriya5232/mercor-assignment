@@ -75,7 +75,33 @@ Authorization: Bearer paste_admin_jwt_token_here
 GET {{baseUrl}}/api/auth/validate
 X-API-Key: paste_api_token_here
 
-### 10. Test Swagger UI
+### 10. Full API Token Flow
+### Step 1: Login as admin to get JWT
+# @name adminLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@mercor.com",
+  "password": "Admin@123"
+}
+
+### Step 2: Create API token using admin JWT
+# @name createApiToken
+POST {{baseUrl}}/api/auth/api-token
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminLogin.response.body.token}}
+
+{
+  "name": "E2E Test Token",
+  "permissions": ["*"]
+}
+
+### Step 3: Validate the newly created API token
+GET {{baseUrl}}/api/auth/validate
+X-API-Key: {{createApiToken.response.body.token}}
+
+### 11. Test Swagger UI
 ### Open in browser: http://localhost:3000/api-docs
 
 ### Test Credentials:
