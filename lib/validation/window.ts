@@ -182,6 +182,19 @@ export interface EmployeeAssignmentsResponse {
       name: string;
       status: string;
       priority: string;
+      windows: Array<{
+        id: string;
+        start: number;
+        end: number | null;
+        duration: number;
+        shiftId: string;
+        note: string;
+        computer: string;
+        os: string;
+        osVersion: string;
+        createdAt: string;
+      }>;
+      totalTimeWorked: number; // Total duration in milliseconds
     }>;
   }>;
 }

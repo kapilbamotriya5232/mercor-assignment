@@ -1,25 +1,23 @@
-import { prisma } from '../db';
-import { generateInsightfulId } from '../utils/id-generator';
-import { nowUnixMs, formatTimestamp, msToHours } from '../utils/time';
-import { 
-  StartWindowRequest,
-  StopWindowRequest,
-  BulkWindowRequest,
-  WindowQueryParams,
-  ProjectTimeQueryParams,
-  WindowResponse,
-  ProjectTimeResponse,
-  StartWindowResponse,
-  StopWindowResponse,
-  CurrentWindowResponse,
-  EmployeeAssignmentsResponse,
-  ValidationErrorResponse,
-  EntityNotFoundResponse,
-  createValidationError,
-  createEntityNotFoundError,
-  createConflictError,
-} from '../validation/window';
 import { v4 as uuidv4 } from 'uuid';
+import { prisma } from '../db';
+import { msToHours, nowUnixMs } from '../utils/time';
+import {
+    CurrentWindowResponse,
+    EmployeeAssignmentsResponse,
+    EntityNotFoundResponse,
+    ProjectTimeQueryParams,
+    ProjectTimeResponse,
+    StartWindowRequest,
+    StartWindowResponse,
+    StopWindowRequest,
+    StopWindowResponse,
+    ValidationErrorResponse,
+    WindowQueryParams,
+    WindowResponse,
+    createConflictError,
+    createEntityNotFoundError,
+    createValidationError
+} from '../validation/window';
 
 export interface WindowServiceResult<T> {
   success: boolean;
@@ -656,11 +654,83 @@ export async function getEmployeeAssignments(
       },
     });
 
+    // Get all windows for the employee's tasks
+    const taskIds = projects.flatMap(project => project.tasks.map(task => task.id));
+    
+    const windows = await prisma.window.findMany({
+      where: {
+        employeeId,
+        organizationId,
+        taskId: {
+          in: taskIds,
+        },
+      },
+      select: {
+        id: true,
+        start: true,
+        end: true,
+        taskId: true,
+        shiftId: true,
+        note: true,
+        computer: true,
+        os: true,
+        osVersion: true,
+        createdAt: true,
+      },
+      orderBy: {
+        start: 'desc',
+      },
+    });
+
+    // Group windows by taskId for easier lookup
+    const windowsByTask = windows.reduce((acc, window) => {
+      if (!acc[window.taskId]) {
+        acc[window.taskId] = [];
+      }
+      acc[window.taskId].push(window);
+      return acc;
+    }, {} as Record<string, typeof windows>);
+
     const formattedProjects = projects.map(project => ({
       id: project.id,
       name: project.name,
       billable: project.billable,
-      tasks: project.tasks,
+      tasks: project.tasks.map(task => {
+        const taskWindows = windowsByTask[task.id] || [];
+        
+        // Calculate total time worked for this task
+        const totalTimeWorked = taskWindows.reduce((total, window) => {
+          const duration = window.end 
+            ? Number(window.end - window.start)
+            : Number(nowUnixMs() - window.start); // For active windows
+          return total + duration;
+        }, 0);
+
+        // Format windows for response
+        const formattedWindows = taskWindows.map(window => ({
+          id: window.id,
+          start: Number(window.start),
+          end: window.end ? Number(window.end) : null,
+          duration: window.end 
+            ? Number(window.end - window.start)
+            : Number(nowUnixMs() - window.start),
+          shiftId: window.shiftId,
+          note: window.note,
+          computer: window.computer,
+          os: window.os,
+          osVersion: window.osVersion,
+          createdAt: window.createdAt.toISOString(),
+        }));
+
+        return {
+          id: task.id,
+          name: task.name,
+          status: task.status,
+          priority: task.priority,
+          windows: formattedWindows,
+          totalTimeWorked,
+        };
+      }),
     }));
 
     return {
