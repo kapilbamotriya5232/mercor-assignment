@@ -137,6 +137,7 @@ model Window {
 model Screenshot {
   id                  String   @id @default(uuid())
   url                 String   @default("")
+  screenshotUrl       String?
   productivity        Int      @default(1)
   osVersion           String
   employeeId          String   @db.Char(15)

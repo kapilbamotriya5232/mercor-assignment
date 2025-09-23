@@ -4,11 +4,13 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { nowUnixMs, applyTimezoneOffset } from '@/lib/utils/time';
 import { jsonWithBigInts } from '@/lib/utils/json';
+import { uploadImageToGCS } from '@/lib/gcp/storage';
 
 const uploadScreenshotSchema = z.object({
   windowId: z.string(),
   timestamp: z.coerce.bigint(),
   timezoneOffset: z.number(),
+  screenshotImage: z.string(),
   os: z.string().optional(),
   osVersion: z.string().optional(),
   computerName: z.string().optional(),
@@ -54,6 +56,8 @@ export const POST = requireAuth(async (req: NextRequest, auth: AuthResult) => {
     const currentTimestamp = nowUnixMs();
 
     // Use a transaction to ensure both operations succeed
+    const screenshotUrl = await uploadImageToGCS(screenshotData.screenshotImage);
+
     const [screenshot] = await prisma.$transaction([
       prisma.screenshot.create({
         data: {
@@ -81,7 +85,7 @@ export const POST = requireAuth(async (req: NextRequest, auth: AuthResult) => {
           osVersion: screenshotData.osVersion || '',
           ipAddress: screenshotData.ipAddress,
           macAddress: screenshotData.macAddress,
-          url: screenshotData.url,
+          url: screenshotUrl,
 
           // Time Info
           timestamp: screenshotData.timestamp,
