@@ -1,4 +1,4 @@
-# T3 - Time Tracking Trial
+# Time Tracking Trial
 
 This project is a time-tracking application built as a "plug-n-play" replacement for [Insightful](https://www.insightful.io), based on their public API contract. It includes a backend API, a web interface for employee onboarding, and is designed to work with a local time-tracking desktop application.
 
