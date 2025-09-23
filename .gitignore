@@ -44,3 +44,5 @@ next-env.d.ts
 /app/generated/prisma
 "Tensile Quasar JSON from Google Cloud.json"
 gcp-json.json
+/docs
+/tests
