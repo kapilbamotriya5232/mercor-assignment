@@ -17,6 +17,7 @@
 /.next/
 /out/
 /dektop-app/
+/desktop-app/node_modules/
 
 # production
 /build
