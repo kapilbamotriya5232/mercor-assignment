@@ -1,15 +1,15 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import SwaggerUI from 'swagger-ui-react';
 import 'swagger-ui-react/swagger-ui.css';
-import { useEffect, useState } from 'react';
 
 export default function ApiDocsPage() {
   const [swaggerSpec, setSwaggerSpec] = useState<any>(null);
 
   useEffect(() => {
-    // Fetch the OpenAPI spec from the API endpoint
-    fetch('/api/swagger')
+    // Prefer static file generated at build time for production reliability
+    fetch('/swagger.json')
       .then(response => response.json())
       .then(data => setSwaggerSpec(data))
       .catch(error => console.error('Error fetching swagger spec:', error));
